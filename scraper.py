@@ -6,12 +6,6 @@ from google.transit import gtfs_realtime_pb2
 
 VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/gs4m-mdc2/application%2Foctet-stream"
 
-conn = sqlite3.connect('trip_updates.db')
-df = pd.read_sql('SELECT * FROM delays LIMIT 20', conn)
-print(df)
-print("\nDelay stats:")
-print(df['delay_seconds'].describe())
-
 def get_feed():
     response = requests.get(VEHICLE_POSITIONS_URL)
     feed = gtfs_realtime_pb2.FeedMessage()
