@@ -2,5 +2,3 @@ requests
 gtfs-realtime-bindings
 protobuf
 pandas
-datetime
-google.transit
