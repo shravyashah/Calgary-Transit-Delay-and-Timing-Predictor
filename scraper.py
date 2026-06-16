@@ -40,6 +40,14 @@ def save_to_supabase(feed):
                     "schedule_relationship": tu.trip.schedule_relationship
                 })
 
+    batch_size = 500
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i:i+batch_size]
+        result = supabase.table("delays").insert(batch).execute()
+        print(f"Inserted batch {i//batch_size + 1}, {len(batch)} rows")
+    
+    print(f"Done, saved {len(rows)} total rows")
+
     result = supabase.table("delays").insert(rows).execute()
     print(f"Done, saved {len(rows)} rows")
     print(f"Result: {result}")
