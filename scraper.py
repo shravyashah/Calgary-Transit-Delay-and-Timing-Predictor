@@ -5,7 +5,7 @@ from google.transit import gtfs_realtime_pb2 # this lib parses protobuf binary d
 # something readable
 from supabase import create_client # connects and lets you write to the database
 
-VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/gs4m-mdc2/application%2Foctet-stream"
+VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/am7c-qe3u/application%2Foctet-stream"
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -24,21 +24,18 @@ def get_feed(): # this function calls the api, then converts response to a pytho
     return feed
 
 def save_to_supabase(feed):
-    rows = [] # empty list that will hold bus trips
-    for entity in feed.entity: # loops through every active trip in the feed
-        if entity.HasField('trip_update'): # if it has an update
-            tu = entity.trip_update # shorthand for less typing 
-            for stop in tu.stop_time_update: # loops through each stop
-                delay = stop.arrival.delay if stop.HasField('arrival') else None 
-                # check to see if there has been a delay
-                rows.append({ # add to the list with different columns that hold data
-                    "timestamp": datetime.now().isoformat(),
-                    "trip_id": tu.trip.trip_id,
-                    "route_id": tu.trip.route_id,
-                    "stop_id": stop.stop_id,
-                    "delay_seconds": delay,
-                    "schedule_relationship": tu.trip.schedule_relationship
-                })
+    rows = []
+    for entity in feed.entity:
+        if entity.HasField('vehicle'):
+            v = entity.vehicle
+            rows.append({
+                "timestamp": datetime.now().isoformat(),
+                "trip_id": v.trip.trip_id,
+                "route_id": v.trip.route_id,
+                "stop_id": str(v.current_stop_sequence),
+                "delay_seconds": v.timestamp,
+                "schedule_relationship": v.trip.schedule_relationship
+            })
 
     batch_size = 500
     for i in range(0, len(rows), batch_size):
