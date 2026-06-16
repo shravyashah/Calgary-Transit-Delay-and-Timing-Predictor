@@ -36,12 +36,10 @@ def save_to_supabase(feed):
                     "delay_seconds": delay,
                     "schedule_relationship": tu.trip.schedule_relationship
                 })
-    supabase.table("delays").insert(rows).execute # insert rows into supabase
-    print(f"Done, saved {len(rows)}rows")
 
     result = supabase.table("delays").insert(rows).execute()
     print(f"Done, saved {len(rows)} rows")
     print(f"Result: {result}")
-    
+
 feed = get_feed() # fetch data
 save_to_supabase(feed) # save to supabase
