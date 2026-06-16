@@ -9,6 +9,9 @@ VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/gs4m-mdc2/application%
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+
+print(f"Connecting to: {SUPABASE_URL}")
+print(f"Connecting to: {SUPABASE_KEY}")
 # reading from GITHUB Secrets and looking up the values stored using os.environ
 supabase = create_client(SUPABASE_URL,SUPABASE_KEY) # connection th supabase database
 
