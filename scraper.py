@@ -31,7 +31,7 @@ def save_to_supabase(feed):
             rows.append({
                 "timestamp": datetime.now().isoformat(),
                 "trip_id": v.trip.trip_id,
-                "route_id": v.trip.route_id if v.trip_route else None,
+                "route_id": v.trip.route_id if v.trip_route_id else None,
                 "stop_id": str(v.current_stop_sequence) if v.current_stop_sequence else None,
                 "delay_seconds": None,
                 "schedule_relationship": v.trip.schedule_relationship
