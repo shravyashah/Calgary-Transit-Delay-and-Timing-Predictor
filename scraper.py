@@ -34,9 +34,9 @@ def save_to_supabase(feed):
                 "route_id": v.trip.route_id if v.trip.route_id else None,
                 "stop_id": str(v.current_stop_sequence) if v.current_stop_sequence else None,
                 "delay_seconds": None,
-                "schedule_relationship": v.trip.schedule_relationship
+                "schedule_relationship": v.trip.schedule_relationship,
                 "lat": v.position.latitude if v.HasField('position') else None,
-                "lon": v.position.longitude if v.HasField('position') else None,
+                "lon": v.position.longitude if v.HasField('position') else None
             })
 
     batch_size = 500
