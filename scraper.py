@@ -18,10 +18,6 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL,SUPABASE_KEY) # connection th supabase database
 
 # create all the paths and dataframes needed for extraction 
-routes = pd.read_csv('../data/CT_GTFS/routes.txt')
-trips = pd.read_csv('../data/CT_GTFS/trips.txt')
-stop_times =  pd.read_csv('../data/CT_GTFS/stop_times.txt')
-stops  = pd.read_csv('../data/CT_GTFS/stops.txt')
 
 def load_static_gtfs(): # added new function to also fetch from the GTFS URL
     response = requests.get(GTFS_URL)
