@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import zipfile
 import io
+import numpy as np
+from scipy.spatial import cKDTree # uses indexing 
 from datetime import datetime, timezone
 from google.transit import gtfs_realtime_pb2 # this lib parses protobuf binary data into 
 # something readable
@@ -23,7 +25,21 @@ def load_static_gtfs(): # added new function to also fetch from the GTFS URL
     response = requests.get(GTFS_URL)
     z = zipfile.ZipFile(io.BytesIO(response.content))
     trips = pd.read_csv(z.open('trips.txt'))
-    return dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
+    stops = pd.read_csv(z.open('stops.txt'))
+    
+    # fetch the route_id from the trip_id where key is the trip_id and val is route_id
+    trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
+
+    # spatial index to find nearest stop using coordinates
+    stop_coords = stops[['stop_lat', 'stop_lon']].values
+    stops_trees = cKDTree(stop_coords)# k dimensional tree to organize coord for easier fetching later
+
+    return trip_to_route, stops, stops_trees
+def nearest_stop(lat, lon, stops, stops_trees):
+    dis, i = stops_trees.query([lat,lon])
+    stop_id = stops['stop_id'].iloc[i]
+    return str(stop_id) if dis < 0.005 else None
+
 
 def get_feed(): # this function calls the api, then converts response to a python object
 # and then returns it
@@ -32,7 +48,7 @@ def get_feed(): # this function calls the api, then converts response to a pytho
     feed.ParseFromString(response.content) #parse content into feed
     return feed
 
-def save_to_supabase(feed,trip_to_route):
+def save_to_supabase(feed,trip_to_route,stops,stops_trees):
     rows = []
     for entity in feed.entity:
         if entity.HasField('vehicle'):
@@ -41,16 +57,21 @@ def save_to_supabase(feed,trip_to_route):
 
             route_id = v.trip.route_id if v.trip.route_id else trip_to_route.get(str(trip_id), None)
 
+            lat = v.position.latitude if v.HasField('position') else None
+            lon = v.position.longitude if v.HasField('position') else None
+
+            if lat and lon:
+                stop_id = nearest_stop(lat,lon,stops,stops_trees)
             
             rows.append({
                 "timestamp": datetime.fromtimestamp(feed.header.timestamp, tz=timezone.utc).isoformat(),
                 "trip_id": trip_id,
                 "route_id": route_id,
-                "stop_id": str(v.current_stop_sequence) if v.current_stop_sequence else None,
+                "stop_id": stop_id,
                 "delay_seconds": None,
                 "schedule_relationship": v.trip.schedule_relationship,
-                "lat": v.position.latitude if v.HasField('position') else None,
-                "lon": v.position.longitude if v.HasField('position') else None
+                "lat": lat,
+                "lon": lon     
             })
 
     batch_size = 500
@@ -61,6 +82,6 @@ def save_to_supabase(feed,trip_to_route):
     
     print(f"Done, saved {len(rows)} total rows")
 
-trip_to_route = load_static_gtfs()
+trip_to_route, stops,stops_trees = load_static_gtfs()
 feed = get_feed() # fetch data
-save_to_supabase(feed,trip_to_route) # save to supabase
+save_to_supabase(feed,trip_to_route,stops,stops_trees) # save to supabase
