@@ -21,20 +21,34 @@ supabase = create_client(SUPABASE_URL,SUPABASE_KEY) # connection th supabase dat
 
 # create all the paths and dataframes needed for extraction 
 
-def load_static_gtfs(): # added new function to also fetch from the GTFS URL
-    response = requests.get(GTFS_URL)
-    z = zipfile.ZipFile(io.BytesIO(response.content))
-    trips = pd.read_csv(z.open('trips.txt'))
-    stops = pd.read_csv(z.open('stops.txt'))
-    
-    # fetch the route_id from the trip_id where key is the trip_id and val is route_id
-    trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
+def load_static_gtfs(retries=3): # added new function to also fetch from the GTFS URL
+    # error handling
 
-    # spatial index to find nearest stop using coordinates
-    stop_coords = stops[['stop_lat', 'stop_lon']].values
-    stops_trees = cKDTree(stop_coords)# k dimensional tree to organize coord for easier fetching later
+    for attempt in range(retries):
+        try:
+            print("Downloading GTFS...")
+            response = requests.get(GTFS_URL, timeout =30)
+            response.raise_for_status()
+            z = zipfile.ZipFile(io.BytesIO(response.content))
+            
+            trips = pd.read_csv(z.open('trips.txt'))
+            stops = pd.read_csv(z.open('stops.txt'))
 
-    return trip_to_route, stops, stops_trees
+            # fetch the route_id from the trip_id where key is the trip_id and val is route_id
+            trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
+
+           # spatial index to find nearest stop using coordinates
+            stop_coords = stops[['stop_lat', 'stop_lon']].values
+            stops_trees = cKDTree(stop_coords)# k dimensional tree to organize coord for easier fetching later
+
+            return trip_to_route, stops, stops_trees
+        
+        except Exception as e:
+            print(f"Attempt {attempt +1} failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(5)
+    return None, None, None
+
 def nearest_stop(lat, lon, stops, stops_trees):
     dis, i = stops_trees.query([lat,lon])
     stop_id = stops['stop_id'].iloc[i]
@@ -73,7 +87,6 @@ def save_to_supabase(feed,trip_to_route,stops,stops_trees):
                 "lat": lat,
                 "lon": lon     
             })
-
     batch_size = 500
     for i in range(0, len(rows), batch_size):
         batch = rows[i:i+batch_size]
@@ -83,5 +96,9 @@ def save_to_supabase(feed,trip_to_route,stops,stops_trees):
     print(f"Done, saved {len(rows)} total rows")
 
 trip_to_route, stops,stops_trees = load_static_gtfs()
+if trip_to_route is None or stops is None or stops_trees is None:
+    print("Failed to load GTFS data after multiple attempts.")
+    exit(0)
+
 feed = get_feed() # fetch data
 save_to_supabase(feed,trip_to_route,stops,stops_trees) # save to supabase
