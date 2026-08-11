@@ -33,15 +33,13 @@ def load_static_gtfs(retries=3): # added new function to also fetch from the GTF
             
             trips = pd.read_csv(z.open('trips.txt'))
             stops = pd.read_csv(z.open('stops.txt'))
+            stop_times = pd.read_csv(z.open('stop_times.txt'))
 
             # fetch the route_id from the trip_id where key is the trip_id and val is route_id
             trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
-
-           # spatial index to find nearest stop using coordinates
-            stop_coords = stops[['stop_lat', 'stop_lon']].values
-            stops_trees = cKDTree(stop_coords)# k dimensional tree to organize coord for easier fetching later
-
-            return trip_to_route, stops, stops_trees
+            trip_to_stoptimes = stop_times.groupby('trip_id')['stop_id'].apply(list).to_dict()
+           
+            return trip_to_route, stops, trip_to_stoptimes
         
         except Exception as e:
             print(f"Attempt {attempt +1} failed: {e}")
@@ -49,11 +47,19 @@ def load_static_gtfs(retries=3): # added new function to also fetch from the GTF
                 time.sleep(5)
     return None, None, None
 
-def nearest_stop(lat, lon, stops, stops_trees):
-    dis, i = stops_trees.query([lat,lon])
-    stop_id = stops['stop_id'].iloc[i]
-    return str(stop_id) if dis < 0.005 else None
-
+def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
+    valid_stop_ids = trip_to_stoptimes.get(str(trip_id))
+    if not valid_stop_ids:
+        return None
+    valid_stop_ids = [str(s) for s in valid_stop_ids]
+    valid_stops = stops[stops['stop_id'].astype(str).isin(valid_stop_ids)]
+    if valid_stops.empty:
+        return None
+    stop_coords = valid_stops[['stop_lat', 'stop_lon']].values
+    tree = cKDTree(stop_coords)
+    distance, index = tree.query([lat, lon])
+    nearest_stop_id = valid_stops['stop_id'].iloc[index]
+    return str(nearest_stop_id) if distance < 0.01 else None
 
 def get_feed(): # this function calls the api, then converts response to a python object
 # and then returns it
@@ -62,7 +68,7 @@ def get_feed(): # this function calls the api, then converts response to a pytho
     feed.ParseFromString(response.content) #parse content into feed
     return feed
 
-def save_to_supabase(feed,trip_to_route,stops,stops_trees):
+def save_to_supabase(feed,trip_to_route,stops,trip_to_stoptimes):
     rows = []
     for entity in feed.entity:
         if entity.HasField('vehicle'):
@@ -73,9 +79,9 @@ def save_to_supabase(feed,trip_to_route,stops,stops_trees):
 
             lat = v.position.latitude if v.HasField('position') else None
             lon = v.position.longitude if v.HasField('position') else None
-
+            stop_id = None
             if lat and lon:
-                stop_id = nearest_stop(lat,lon,stops,stops_trees)
+                stop_id = nearest_stop(lat,lon,trip_id,stops,trip_to_stoptimes)
             
             rows.append({
                 "timestamp": datetime.fromtimestamp(feed.header.timestamp, tz=timezone.utc).isoformat(),
@@ -95,10 +101,10 @@ def save_to_supabase(feed,trip_to_route,stops,stops_trees):
     
     print(f"Done, saved {len(rows)} total rows")
 
-trip_to_route, stops,stops_trees = load_static_gtfs()
-if trip_to_route is None or stops is None or stops_trees is None:
+trip_to_route, stops, trip_to_stoptimes = load_static_gtfs()
+if trip_to_route is None or stops is None or trip_to_stoptimes is None:
     print("Failed to load GTFS data after multiple attempts.")
     exit(0)
 
 feed = get_feed() # fetch data
-save_to_supabase(feed,trip_to_route,stops,stops_trees) # save to supabase
+save_to_supabase(feed,trip_to_route,stops,trip_to_stoptimes) # save to supabase
