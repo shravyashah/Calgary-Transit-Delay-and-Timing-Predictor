@@ -219,3 +219,5 @@ __marimo__/
 
 transit_delays.db
 .env
+
+data/CT_GTFS/
