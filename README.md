@@ -11,10 +11,10 @@ As someone who heavily relies on transit, using the transit app is not always re
 - Cleaned and preprocessed data pulled from Supabase( 74k rows) using Juypyter Notebooks and Pandas.
 - Calculated delay in seconds and minutes using the time from the timestamp and the arrival time from transit data. A negative value indicates its earlier than scheduled and vice-versa.
 - Built a baseline model which had an MAE of 5.36 min and then made a Random Forest regressor that had an MAE of 4.46 min
-- Fixed spatial matching to only record stops that are scheduled for specific trip id
+  
   
 ## Next Steps
-- Re-collect data as stop-matching is now fixed
+- Re-collect data as stop-matching is now in progress
 - Use a different algorithm/ fine tune for greater results
 - Add more features such as weather, events, holidays 
 - Make into an interactive app
