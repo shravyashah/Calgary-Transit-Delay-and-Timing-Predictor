@@ -59,7 +59,7 @@ def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
     tree = cKDTree(stop_coords)
     distance, index = tree.query([lat, lon])
     nearest_stop_id = valid_stops['stop_id'].iloc[index]
-    return str(nearest_stop_id) if distance < 0.01 else None
+    return str(nearest_stop_id) if distance < 0.05 else None
 
 def get_feed(): # this function calls the api, then converts response to a python object
 # and then returns it
@@ -79,7 +79,7 @@ def save_to_supabase(feed,trip_to_route,stops,trip_to_stoptimes):
 
             lat = v.position.latitude if v.HasField('position') else None
             lon = v.position.longitude if v.HasField('position') else None
-            stop_id = None
+            #debugging
             if lat and lon:
                 stop_id = nearest_stop(lat,lon,trip_id,stops,trip_to_stoptimes)
             
