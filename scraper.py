@@ -14,10 +14,10 @@ VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/am7c-qe3u/application%
 GTFS_URL = "https://data.calgary.ca/download/npk7-z3bj/application%2Fx-zip-compressed"
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+SUPABASE_PRIVATE_KEY = os.environ["SUPABASE_PRIVATE_KEY"]
 
 # reading from GITHUB Secrets and looking up the values stored using os.environ
-supabase = create_client(SUPABASE_URL,SUPABASE_KEY) # connection th supabase database
+supabase = create_client(SUPABASE_URL,SUPABASE_PRIVATE_KEY) # connection th supabase database
 
 # create all the paths and dataframes needed for extraction 
 
