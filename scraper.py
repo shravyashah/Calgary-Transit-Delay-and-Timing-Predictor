@@ -15,8 +15,8 @@ load_dotenv() # loads the .env file and makes the variables available to the scr
 VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/am7c-qe3u/application%2Foctet-stream"
 GTFS_URL = "https://data.calgary.ca/download/npk7-z3bj/application%2Fx-zip-compressed"
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_PRIVATE_KEY = os.environ["SUPABASE_PRIVATE_KEY"]
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_PRIVATE_KEY = os.getenv("SUPABASE_PRIVATE_KEY")
 
 # reading from GITHUB Secrets and looking up the values stored using os.environ
 supabase = create_client(SUPABASE_URL,SUPABASE_PRIVATE_KEY) # connection th supabase database
@@ -65,7 +65,7 @@ def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
     distance, index = tree.query([lat, lon])
     nearest_stop_id = valid_stops['stop_id'].iloc[index]
     
-    return str(nearest_stop_id) if distance < 0.05 else None
+    return str(nearest_stop_id) if distance < 0.01 else None
 
 def get_feed(): # this function calls the api, then converts response to a python object
 # and then returns it
