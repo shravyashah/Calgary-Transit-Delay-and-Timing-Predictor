@@ -6,7 +6,7 @@ import os
 load_dotenv() # load environment variables from .env file
 
 url = os.getenv("SUPABASE_URL")
-key = os.getenv("SUPABASE_KEY")
+key = os.getenv("SUPABASE_PRIVATE_KEY")
 supabase = create_client(url,key)
 
 def fetch_data_from_supabase(table_name):
