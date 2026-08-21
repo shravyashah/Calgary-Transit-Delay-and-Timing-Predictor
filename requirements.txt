@@ -3,3 +3,4 @@ gtfs-realtime-bindings
 protobuf
 pandas
 supabase
+dotenv
