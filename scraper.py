@@ -3,12 +3,14 @@ import os
 import pandas as pd
 import zipfile
 import io
-import numpy as np
 from scipy.spatial import cKDTree # uses indexing 
-from datetime import datetime, timezone
+from dotenv import load_dotenv # loads the .env file and makes the variables available to the script
+from datetime import datetime, timezone,time
 from google.transit import gtfs_realtime_pb2 # this lib parses protobuf binary data into 
 # something readable
 from supabase import create_client # connects and lets you write to the database
+
+load_dotenv() # loads the .env file and makes the variables available to the script
 
 VEHICLE_POSITIONS_URL = "https://data.calgary.ca/download/am7c-qe3u/application%2Foctet-stream"
 GTFS_URL = "https://data.calgary.ca/download/npk7-z3bj/application%2Fx-zip-compressed"
@@ -37,8 +39,10 @@ def load_static_gtfs(retries=3): # added new function to also fetch from the GTF
 
             # fetch the route_id from the trip_id where key is the trip_id and val is route_id
             trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
+            stop_times['trip_id'] = stop_times['trip_id'].astype(str)
             trip_to_stoptimes = stop_times.groupby('trip_id')['stop_id'].apply(list).to_dict()
-           
+
+        
             return trip_to_route, stops, trip_to_stoptimes
         
         except Exception as e:
@@ -50,6 +54,7 @@ def load_static_gtfs(retries=3): # added new function to also fetch from the GTF
 def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
     valid_stop_ids = trip_to_stoptimes.get(str(trip_id))
     if not valid_stop_ids:
+        print(f"No stoptimes found for trip_id={trip_id}")
         return None
     valid_stop_ids = [str(s) for s in valid_stop_ids]
     valid_stops = stops[stops['stop_id'].astype(str).isin(valid_stop_ids)]
@@ -59,6 +64,7 @@ def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
     tree = cKDTree(stop_coords)
     distance, index = tree.query([lat, lon])
     nearest_stop_id = valid_stops['stop_id'].iloc[index]
+    
     return str(nearest_stop_id) if distance < 0.05 else None
 
 def get_feed(): # this function calls the api, then converts response to a python object
@@ -79,7 +85,7 @@ def save_to_supabase(feed,trip_to_route,stops,trip_to_stoptimes):
 
             lat = v.position.latitude if v.HasField('position') else None
             lon = v.position.longitude if v.HasField('position') else None
-            #debugging
+            stop_id = v.stop_id if v.HasField('stop_id') else None
             if lat and lon:
                 stop_id = nearest_stop(lat,lon,trip_id,stops,trip_to_stoptimes)
             
