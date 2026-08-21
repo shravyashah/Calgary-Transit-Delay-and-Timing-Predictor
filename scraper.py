@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import zipfile
 import io
+import numpy as np
 from scipy.spatial import cKDTree # uses indexing 
 from dotenv import load_dotenv # loads the .env file and makes the variables available to the script
 from datetime import datetime, timezone,time
@@ -41,8 +42,7 @@ def load_static_gtfs(retries=3): # added new function to also fetch from the GTF
             trip_to_route = dict(zip(trips['trip_id'].astype(str),trips['route_id'].astype(str)))
             stop_times['trip_id'] = stop_times['trip_id'].astype(str)
             trip_to_stoptimes = stop_times.groupby('trip_id')['stop_id'].apply(list).to_dict()
-
-        
+    
             return trip_to_route, stops, trip_to_stoptimes
         
         except Exception as e:
@@ -58,14 +58,21 @@ def nearest_stop(lat, lon, trip_id, stops, trip_to_stoptimes):
         return None
     valid_stop_ids = [str(s) for s in valid_stop_ids]
     valid_stops = stops[stops['stop_id'].astype(str).isin(valid_stop_ids)]
+
     if valid_stops.empty:
         return None
-    stop_coords = valid_stops[['stop_lat', 'stop_lon']].values
+    ref_lat_rad = np.radians(valid_stops['stop_lat'].mean())
+    longitude_scale = np.cos(ref_lat_rad)
+
+    stop_coords = valid_stops[['stop_lat', 'stop_lon']].copy()
+    stop_coords['stop_lon'] *= longitude_scale
+    stop_coords = stop_coords.values
+
     tree = cKDTree(stop_coords)
-    distance, index = tree.query([lat, lon])
+    distance, index = tree.query([lat, lon*longitude_scale])
     nearest_stop_id = valid_stops['stop_id'].iloc[index]
     
-    return str(nearest_stop_id) if distance < 0.01 else None
+    return str(nearest_stop_id) if distance < 0.003 else None
 
 def get_feed(): # this function calls the api, then converts response to a python object
 # and then returns it
