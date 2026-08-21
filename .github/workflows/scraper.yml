@@ -17,7 +17,7 @@ jobs:
           python-version: '3.13'
       
       - name: Install dependencies
-        run : pip install requests gtfs-realtime-bindings protobuf pandas supabase scipy
+        run : pip install requests gtfs-realtime-bindings protobuf pandas supabase scipy dotenv
       
       - name: Run scraper
         run: python scraper.py
